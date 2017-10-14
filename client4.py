@@ -4,15 +4,20 @@ import select
 import sys
 import json
 
-
 class LamportSystem:
     lamport_clock = 0
     process_id = 1
     req_number = 0
+    numOfLikes = 0
     req_queue = []
+    reply_dict = {}
+    num_processes = 3
 
     def manage_lamport(clock_time):
         LamportSystem.lamport_clock = max(LamportSystem.lamport_clock, clock_time) + 1
+
+    def process_likes(likes):
+        LamportSystem.numOfLikes += likes
 
     def add_to_queue(request):
         for index, req in enumerate(LamportSystem.req_queue):
@@ -26,26 +31,48 @@ class LamportSystem:
     def send_message(message):
         server.send(message)
 
-    def send_request(self):
+    def send_request(self,likes):
         self.manage_lamport(LamportSystem.lamport_clock)
         LamportSystem.req_number += LamportSystem.req_number
-        req = {'process_id': LamportSystem.process_id, 'clock': LamportSystem.lamport_clock, 'type': 'REQ',
-               'req_number': LamportSystem.req_number}
+        req = {'process_id': LamportSystem.process_id, 'clock' : LamportSystem.lamport_clock, 'type' : 'REQ', 'req_number' : LamportSystem.req_number, 'num_likes': likes}
         self.add_to_queue(req)
         self.send_message(json.dumps(req))
-        # json.loads(input)
 
     def send_reply(self, message):
         self.manage_lamport(LamportSystem.lamport_clock)
-        reply = {'process_id': message['process_id'], 'clock': LamportSystem.lamport_clock, 'type': 'REP',
-                 'req_number': LamportSystem.req_number}
-        server.send(reply)
+        reply = {'req_process_id': message['process_id'], 'reply_process_id': LamportSystem.process_id, 'clock': LamportSystem.lamport_clock, 'type': 'REP',
+               'req_number': message['req_number']}
+        self.send_message(json.dumps(reply))
 
     def send_release(self, likes):
         self.manage_lamport(LamportSystem.lamport_clock)
-        LamportSystem.req_queue.pop(0)
+        LamportSystem.req_queue.pop(0)   #check if process on top
         release = {'process_id': LamportSystem.process_id, 'clock': LamportSystem.lamport_clock, 'type': 'REL',
-                   'req_number': LamportSystem.req_number}
+                    'req_number': LamportSystem.req_number, 'num_likes' : likes}
+        self.send_message(json.dumps(release))
+
+    def rcv_request(self,request):
+        request = json.loads(request)
+        self.manage_lamport(request['clock'])
+        self.add_to_queue(request)
+        self.send_reply(self, request)
+
+    def rcv_release(self,release):
+        release = json.loads(release)
+        self.manage_lamport(release['clock'])
+        self.process_likes(release['likes'])
+        LamportSystem.req_queue.pop(0)   #check if process on top
+
+    def rcv_reply(self,reply):
+        reply = json.loads(reply)
+        self.manage_lamport(reply['clock'])
+        if reply['req_number'] not in LamportSystem.reply_dict:
+            LamportSystem.reply_dict[reply['req_number']] = []
+        LamportSystem.reply_dict[reply['req_number']].append(reply['reply_process_id'])
+        if len(LamportSystem.reply_dict[reply['req_number']]) == LamportSystem.num_processes:
+            if LamportSystem.req_queue[0]['process_id'] == LamportSystem.process_id:
+                self.process_likes(LamportSystem.req_queue[0]['num_likes'])
+                self.send_release(LamportSystem.req_queue[0]['num_likes'])
 
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
