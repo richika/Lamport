@@ -7,7 +7,7 @@ import re
 
 class LamportSystem:
     lamport_clock = 0
-    process_id = 1
+    process_id = 3
     req_number = 0
     numOfLikes = 0
     req_queue = []
@@ -113,7 +113,7 @@ print 'Ip address of ' + host + ' is ' + remote_ip
 server.connect((remote_ip, port))
 
 print 'Socket Connected to ' + host + ' on ip ' + remote_ip
-server.send(json.dumps({'process_id' : 1, 'type':'CON'}))
+server.send(json.dumps({'process_id' : 3, 'type':'CON'}))
 
 
 lamport_object = LamportSystem()
@@ -129,6 +129,7 @@ while True:
         if socks == server:
             message = socks.recv(2048)
             #r = re.split('(\{.*?\})(?= *\{)', messages)
+            #for message in r:
             try:
                 print message
                 lamport_object.process_message_from_server(message)
