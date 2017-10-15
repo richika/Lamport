@@ -97,11 +97,11 @@ server.connect((remote_ip, port))
 print 'Socket Connected to ' + host + ' on ip ' + remote_ip
 
 
-server.send(json.dumps({'process_id': 1, 'type': 'CON'}))
+server.send(json.dumps({'process_id': 3, 'type': 'CON'}))
 time.sleep(5)
-server.send(json.dumps({'process_id': 1 , 'clock': 1 , 'type': 'REQ','req_number': 1}))
+server.send(json.dumps({'process_id': 3 , 'clock': 1 , 'type': 'REQ','req_number': 1}))
 time.sleep(5)
-server.send(json.dumps({'req_process_id': 2 , 'reply_process_id': 1, 'clock': 3, 'type': 'REP','req_number': 1}))
+server.send(json.dumps({'req_process_id': 1, 'reply_process_id': 3, 'clock': 3, 'type': 'REP','req_number': 1}))
 
 socket = [server]
 read_socket, write_socket, error_socket = select.select(socket, [], [])

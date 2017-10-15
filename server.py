@@ -1,72 +1,89 @@
 import socket
 import sys
 from thread import *
+import json
 
-HOST = ''  # Symbolic name meaning all available interfaces
-PORT = 8888  # Arbitrary non-privileged port
+class MessagePassServer:
+    list_of_clients = {}
+    HOST = ''
+    PORT = 8888
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-print 'Socket created'
+    def client_thread(self, conn):
+        while True:
+            try:
+                message = conn.recv(2048)
+                parsed_message = json.loads(message)
 
-# Bind socket to local host and port
-try:
-    s.bind((HOST, PORT))
-except socket.error, msg:
-    print 'Bind failed. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
-    sys.exit()
+                if parsed_message:
 
-print 'Socket bind complete'
+                    if parsed_message['type'] == 'CON':
+                        process_id = parsed_message['process_id']
+                        self.list_of_clients[process_id] = conn
 
-# Start listening on socket
-s.listen(10)
-print 'Socket now listening'
+                    elif parsed_message['type'] == 'REQ' or parsed_message['type'] == 'REL':
+                        # Calls broadcast function to send message to all other clients
+                        self.broadcast(message, conn)
 
-list_of_clients = []
+                    elif parsed_message['type'] == 'REP':
+                        # Calls function to send message to requesting client
+                        self.send_ok(parsed_message)
+                else:
+                    self.remove(conn)
 
-# Function for handling connections. This will be used to create threads
-def clientthread(conn):
+            except:
+                continue
 
-    while True:
+    def send_ok(self, parsed_message):
+        print 'check in send ok'
+        req_process_id = parsed_message['req_process_id']
+        client = self.list_of_clients[req_process_id]
+        print self.list_of_clients
+
         try:
-            message = conn.recv(2048)
-            if message:
-                print "Received from client < " + addr[0] + "> " + message
-
-                # Calls broadcast function to send message to all
-                message_to_send = "<" + addr[0] + "> " + message
-                broadcast(message_to_send, conn)
-
-            else:
-                """message may have no content if the connection
-                is broken, in this case we remove the connection"""
-                remove(conn)
+            print 'in try'
+            print 'sending to client ' + req_process_id + 'message ' + parsed_message
+            client.send(parsed_message)
 
         except:
-            continue
+            print 'in exception --- ' + sys.exc_info()[0]
+            client.close()
 
-def broadcast(message, connection):
-            for client in list_of_clients:
-                if client != connection:
-                    try:
-                        client.send(message)
-                    except:
-                        client.close()
+    def broadcast(self, message, connection):
+        print 'in broadcast'
+        for client in self.list_of_clients:
+            if self.list_of_clients[client] != connection:
+                try:
+                    print 'sending to client ' + client + 'message ' + message
+                    print self.list_of_clients
+                    self.list_of_clients[client].send(message)
+                except:
+                    print 'in 57' + sys.exc_info()[0]
+                    self.list_of_clients[client].close()
 
-                        # if the link is broken, we remove the client
-                        remove(clients)
+    def initialiseConnection(self):
 
-def remove(connection):
-            if connection in list_of_clients:
-                list_of_clients.remove(connection)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-# now keep talking with the client
-while 1:
-    # wait to accept a connection - blocking call
-    conn, addr = s.accept()
-    list_of_clients.append(conn)
-    print 'Connected with ' + addr[0] + ':' + str(addr[1])
+        try:
+            s.bind((self.HOST, self.PORT))
+        except socket.error, msg:
+            print 'Bind failed. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
+            sys.exit()
 
-    # start new thread takes 1st argument as a function name to be run, second is the tuple of arguments to the function.
-    start_new_thread(clientthread, (conn))
+        print 'Socket bind complete'
 
-s.close()
+        s.listen(10)
+        print 'Socket now listening'
+
+        while 1:
+            conn, addr = s.accept()
+            print 'Connected with ' + addr[0] + ':' + str(addr[1])
+
+            start_new_thread(self.client_thread, (conn,))
+
+        s.close()
+
+
+Server = MessagePassServer()
+Server.initialiseConnection()
