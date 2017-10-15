@@ -12,14 +12,14 @@ class LamportSystem:
     numOfLikes = 0
     req_queue = []
     reply_dict = {}
-    num_processes = 3
+    num_processes = 2
 
     def manage_lamport(self, clock_time):
         LamportSystem.lamport_clock = max(LamportSystem.lamport_clock, clock_time) + 1
 
     def process_likes(self, likes):
-        LamportSystem.numOfLikes += likes
-        print 'likes' + LamportSystem.numOfLikes
+        LamportSystem.numOfLikes += int(likes)
+        print 'likes', LamportSystem.numOfLikes
 
     def add_to_queue(self, request):
         if bool(LamportSystem.req_queue):
@@ -67,7 +67,7 @@ class LamportSystem:
 
     def rcv_release(self,release):
         self.manage_lamport(release['clock'])
-        self.process_likes(release['likes'])
+        self.process_likes(release['num_likes'])
         LamportSystem.req_queue.pop(0)   #check if process on top
 
     def rcv_reply(self,reply):
@@ -127,15 +127,15 @@ while True:
 
     for socks in read_sockets:
         if socks == server:
-            message = socks.recv(2048)
-            #r = re.split('(\{.*?\})(?= *\{)', messages)
-            #for message in r:
-            try:
-                print message
-                lamport_object.process_message_from_server(message)
-                print message
-            except:
-                print message
+            messages = socks.recv(2048)
+            r = re.split('(\{.*?\})(?= *\{)', messages)
+            for message in r:
+                try:
+                    message = json.loads(message)
+                    lamport_object.process_message_from_server(message)
+                    print message
+                except:
+                    print message
 
         else:
             message = sys.stdin.readline()
