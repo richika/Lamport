@@ -52,19 +52,16 @@ class LamportSystem:
         self.send_message(json.dumps(release))
 
     def rcv_request(self,request):
-        request = json.loads(request)
         self.manage_lamport(request['clock'])
         self.add_to_queue(request)
         self.send_reply(self, request)
 
     def rcv_release(self,release):
-        release = json.loads(release)
         self.manage_lamport(release['clock'])
         self.process_likes(release['likes'])
         LamportSystem.req_queue.pop(0)   #check if process on top
 
     def rcv_reply(self,reply):
-        reply = json.loads(reply)
         self.manage_lamport(reply['clock'])
         if reply['req_number'] not in LamportSystem.reply_dict:
             LamportSystem.reply_dict[reply['req_number']] = []
@@ -73,6 +70,20 @@ class LamportSystem:
             if LamportSystem.req_queue[0]['process_id'] == LamportSystem.process_id:
                 self.process_likes(LamportSystem.req_queue[0]['num_likes'])
                 self.send_release(LamportSystem.req_queue[0]['num_likes'])
+
+    def process_message_from_server(self, message):
+        message = json.loads(message)
+        message_type = message['type']
+        if message_type == 'REQ':
+            self.rcv_request(message)
+        elif message_type == 'REL':
+            self.rcv_release(message)
+        elif message_type == 'REP':
+            self.rcv_reply(message)
+
+    def send_message_to_server(self,message):
+        [int(likes) for likes in message.split() if likes.isdigit()]
+        self.send_request(self, likes)
 
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -95,6 +106,8 @@ server.connect((remote_ip, port))
 
 print 'Socket Connected to ' + host + ' on ip ' + remote_ip
 
+lamport_object = LamportSystem()
+
 while True:
 
     # maintains a list of possible input streams
@@ -105,12 +118,10 @@ while True:
     for socks in read_sockets:
         if socks == server:
             message = socks.recv(2048)
-            print message
+            lamport_object.process_message_from_server(message)
         else:
             message = sys.stdin.readline()
-            server.send(message)
-            sys.stdout.write("<You>")
-            sys.stdout.write(message)
+            lamport_object.send_message_to_server(message)
             sys.stdout.flush()
 
 server.close()
