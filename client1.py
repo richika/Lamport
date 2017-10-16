@@ -2,8 +2,8 @@
 import socket
 import select
 import sys
-import time
 import json
+import re
 
 class LamportSystem:
     lamport_clock = 0
@@ -12,29 +12,37 @@ class LamportSystem:
     numOfLikes = 0
     req_queue = []
     reply_dict = {}
-    num_processes = 3
+    num_processes = 2
 
-    def manage_lamport(clock_time):
+    def manage_lamport(self, clock_time):
         LamportSystem.lamport_clock = max(LamportSystem.lamport_clock, clock_time) + 1
 
-    def process_likes(likes):
-        LamportSystem.numOfLikes += likes
+    def process_likes(self, likes):
+        LamportSystem.numOfLikes += int(likes)
+        print 'likes', LamportSystem.numOfLikes
 
-    def add_to_queue(request):
-        for index, req in enumerate(LamportSystem.req_queue):
-            if req['clock'] > request['clock']:
-                LamportSystem.req_queue.insert(index, request)
-            elif (req['clock'] == request['clock']) and (req['process_id'] > request['process_id']):
-                LamportSystem.req_queue.insert(index, request)
-            else:
-                LamportSystem.req_queue.append(request)
+    def add_to_queue(self, request):
+        if bool(LamportSystem.req_queue):
+            for index, req in enumerate(LamportSystem.req_queue):
+                if req['clock'] > request['clock']:
+                    LamportSystem.req_queue.insert(index, request)
+                    break
+                elif (req['clock'] == request['clock']) and (req['process_id'] > request['process_id']):
+                    LamportSystem.req_queue.insert(index, request)
+                    break
+                else:
+                    LamportSystem.req_queue.append(request)
+                    break
+        else:
+            LamportSystem.req_queue.append(request)
+        print LamportSystem.req_queue
 
-    def send_message(message):
+    def send_message(self, message):
         server.send(message)
 
     def send_request(self,likes):
         self.manage_lamport(LamportSystem.lamport_clock)
-        LamportSystem.req_number += LamportSystem.req_number
+        LamportSystem.req_number += 1
         req = {'process_id': LamportSystem.process_id, 'clock' : LamportSystem.lamport_clock, 'type' : 'REQ', 'req_number' : LamportSystem.req_number, 'num_likes': likes}
         self.add_to_queue(req)
         self.send_message(json.dumps(req))
@@ -53,19 +61,16 @@ class LamportSystem:
         self.send_message(json.dumps(release))
 
     def rcv_request(self,request):
-        request = json.loads(request)
         self.manage_lamport(request['clock'])
         self.add_to_queue(request)
-        self.send_reply(self, request)
+        self.send_reply(request)
 
     def rcv_release(self,release):
-        release = json.loads(release)
         self.manage_lamport(release['clock'])
-        self.process_likes(release['likes'])
+        self.process_likes(release['num_likes'])
         LamportSystem.req_queue.pop(0)   #check if process on top
 
     def rcv_reply(self,reply):
-        reply = json.loads(reply)
         self.manage_lamport(reply['clock'])
         if reply['req_number'] not in LamportSystem.reply_dict:
             LamportSystem.reply_dict[reply['req_number']] = []
@@ -74,6 +79,19 @@ class LamportSystem:
             if LamportSystem.req_queue[0]['process_id'] == LamportSystem.process_id:
                 self.process_likes(LamportSystem.req_queue[0]['num_likes'])
                 self.send_release(LamportSystem.req_queue[0]['num_likes'])
+
+    def process_message_from_server(self, message):
+        message_type = message['type']
+        if message_type == 'REQ':
+            self.rcv_request(message)
+        elif message_type == 'REL':
+            self.rcv_release(message)
+        elif message_type == 'REP':
+            self.rcv_reply(message)
+
+    def send_message_to_server(self,message):
+        [int(likes) for likes in message.split() if likes.isdigit()]
+        self.send_request(likes)
 
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -95,21 +113,36 @@ print 'Ip address of ' + host + ' is ' + remote_ip
 server.connect((remote_ip, port))
 
 print 'Socket Connected to ' + host + ' on ip ' + remote_ip
+server.send(json.dumps({'process_id' : 1, 'type':'CON'}))
 
 
-server.send(json.dumps({'process_id': 1, 'type': 'CON'}))
-time.sleep(5)
-server.send(json.dumps({'process_id': 1 , 'clock': 1 , 'type': 'REQ','req_number': 1}))
-time.sleep(5)
-server.send(json.dumps({'req_process_id': 2 , 'reply_process_id': 1, 'clock': 3, 'type': 'REP','req_number': 1}))
-
-socket = [server]
-read_socket, write_socket, error_socket = select.select(socket, [], [])
+lamport_object = LamportSystem()
 
 while True:
-    for sock in read_socket:
-        message = server.recv(2048)
-        print "Received : " + message
+
+    # maintains a list of possible input streams
+    sockets_list = [sys.stdin, server]
+
+    read_sockets, write_socket, error_socket = select.select(sockets_list, [], [])
+
+    for socks in read_sockets:
+        if socks == server:
+            messages = socks.recv(2048)
+            r = re.split('(\{.*?\})(?= *\{)', messages)
+            for message in r:
+                try:
+                    message = json.loads(message)
+                    lamport_object.process_message_from_server(message)
+                    print message
+                except:
+                    print message
+
+        else:
+            message = sys.stdin.readline()
+            print message
+            lamport_object.send_message_to_server(message)
+            sys.stdout.write("<You>")
+            sys.stdout.write(message)
+            sys.stdout.flush()
 
 server.close()
-

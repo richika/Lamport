@@ -9,6 +9,7 @@ class MessagePassServer:
     PORT = 8888
 
     def client_thread(self, conn):
+        conn.send('welcome\n')
         while True:
             try:
                 message = conn.recv(2048)
@@ -19,6 +20,8 @@ class MessagePassServer:
                     if parsed_message['type'] == 'CON':
                         process_id = parsed_message['process_id']
                         self.list_of_clients[process_id] = conn
+                        print 'printing list of clients in client thread method '
+                        print self.list_of_clients
 
                     elif parsed_message['type'] == 'REQ' or parsed_message['type'] == 'REL':
                         # Calls broadcast function to send message to all other clients
@@ -41,8 +44,7 @@ class MessagePassServer:
 
         try:
             print 'in try'
-            print 'sending to client ' + req_process_id + 'message ' + parsed_message
-            client.send(parsed_message)
+            client.send(json.dumps(parsed_message))
 
         except:
             print 'in exception --- ' + sys.exc_info()[0]
@@ -50,15 +52,18 @@ class MessagePassServer:
 
     def broadcast(self, message, connection):
         print 'in broadcast'
+        print self.list_of_clients
         for client in self.list_of_clients:
             if self.list_of_clients[client] != connection:
                 try:
-                    print 'sending to client ' + client + 'message ' + message
+                    #print 'sending to client ' + client + 'message ' + message
                     print self.list_of_clients
                     self.list_of_clients[client].send(message)
-                except:
-                    print 'in 57' + sys.exc_info()[0]
-                    self.list_of_clients[client].close()
+                except Exception as ex:
+                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                    message = template.format(type(ex).__name__, ex.args)
+                    print message
+
 
     def initialiseConnection(self):
 
