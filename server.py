@@ -9,7 +9,7 @@ class MessagePassServer:
     PORT = 8888
 
     def client_thread(self, conn):
-        conn.send('welcome\n')
+        conn.send('TESTCASE CONTENT\n')
         while True:
             try:
                 message = conn.recv(2048)

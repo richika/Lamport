@@ -21,10 +21,12 @@ class LamportSystem:
 
     def manage_lamport(self, clock_time):
         LamportSystem.lamport_clock = max(LamportSystem.lamport_clock, clock_time) + 1
+        print 'Lamport clock:', LamportSystem.lamport_clock
 
     def process_likes(self, likes):
+        self.manage_lamport(LamportSystem.lamport_clock)
         LamportSystem.numOfLikes += int(likes)
-        print 'likes', LamportSystem.numOfLikes
+        print 'Number of Likes:', LamportSystem.numOfLikes
 
     def add_to_queue(self, request):
         if bool(LamportSystem.req_queue):
@@ -44,6 +46,7 @@ class LamportSystem:
 
     def send_message(self, message):
         server.send(message)
+        print 'Message sent: ', message
 
     def send_request(self,likes):
         LamportSystem.mutex_send_req.acquire()
@@ -145,8 +148,8 @@ while True:
             for message in r:
                 try:
                     message = json.loads(message)
+                    print 'Message received: ', message
                     lamport_object.process_message_from_server(message)
-                    print message
                 except:
                     print message
 
@@ -154,8 +157,6 @@ while True:
             message = sys.stdin.readline()
             print message
             lamport_object.send_message_to_server(message)
-            sys.stdout.write("<You>")
-            sys.stdout.write(message)
             sys.stdout.flush()
 
 server.close()
