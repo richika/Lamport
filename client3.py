@@ -4,6 +4,7 @@ import select
 import sys
 import json
 import re
+from thread import *
 from threading import Thread, Lock
 
 class LamportSystem:
@@ -149,7 +150,7 @@ while True:
                 try:
                     message = json.loads(message)
                     print 'Message received: ', message
-                    lamport_object.process_message_from_server(message)
+                    start_new_thread(lamport_object.process_message_from_server, (message,))
                 except:
                     print message
 
