@@ -160,7 +160,7 @@ while True:
         else:
             message = sys.stdin.readline()
             print message
-            lamport_object.send_message_to_server(message)
+            start_new_thread(lamport_object.send_message_to_server, (message,))
             sys.stdout.flush()
 
 server.close()
