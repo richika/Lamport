@@ -35,6 +35,7 @@ class LamportSystem:
                     break
         else:
             LamportSystem.req_queue.append(request)
+
         print LamportSystem.req_queue
 
     def send_message(self, message):
