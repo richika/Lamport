@@ -6,6 +6,7 @@ import json
 import re
 from thread import *
 from threading import Thread, Lock
+import time
 
 class LamportSystem:
     lamport_clock = 0
@@ -14,7 +15,7 @@ class LamportSystem:
     numOfLikes = 0
     req_queue = []
     reply_dict = {}
-    num_processes = 2
+    num_processes = 3
     mutex_rcv_req = Lock()
     mutex_rcv_rep = Lock()
     mutex_rcv_rel = Lock()
@@ -25,7 +26,6 @@ class LamportSystem:
         print 'Lamport clock:', LamportSystem.lamport_clock
 
     def process_likes(self, likes):
-        self.manage_lamport(LamportSystem.lamport_clock)
         LamportSystem.numOfLikes += int(likes)
         print 'Number of Likes:', LamportSystem.numOfLikes
 
@@ -159,7 +159,7 @@ while True:
 
         else:
             message = sys.stdin.readline()
-            print message
+            time.sleep(5)
             start_new_thread(lamport_object.send_message_to_server, (message,))
             sys.stdout.flush()
 

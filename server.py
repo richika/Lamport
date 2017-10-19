@@ -21,8 +21,6 @@ class MessagePassServer:
                     if parsed_message['type'] == 'CON':
                         process_id = parsed_message['process_id']
                         self.list_of_clients[process_id] = conn
-                        print 'printing list of clients in client thread method '
-                        print self.list_of_clients
 
                     elif parsed_message['type'] == 'REQ' or parsed_message['type'] == 'REL':
                         # Calls broadcast function to send message to all other clients
@@ -38,13 +36,10 @@ class MessagePassServer:
                 continue
 
     def send_ok(self, parsed_message):
-        print 'check in send ok'
         req_process_id = parsed_message['req_process_id']
         client = self.list_of_clients[req_process_id]
-        print self.list_of_clients
 
         try:
-            print 'in try'
             client.send(json.dumps(parsed_message))
 
         except:
@@ -52,8 +47,6 @@ class MessagePassServer:
             client.close()
 
     def broadcast(self, message, connection):
-        print 'in broadcast'
-        print self.list_of_clients
         for client in self.list_of_clients:
             req_thread = threading.Thread(target=self.spawn_threads_for_broadcast, args=(client,connection,message,) )
             req_thread.start()
@@ -61,7 +54,6 @@ class MessagePassServer:
     def spawn_threads_for_broadcast(self,client,connection,message):
         if self.list_of_clients[client] != connection:
             try:
-                print self.list_of_clients
                 self.list_of_clients[client].send(message)
             except Exception as ex:
                 template = "An exception of type {0} occurred. Arguments:\n{1!r}"
