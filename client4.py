@@ -50,13 +50,13 @@ class LamportSystem:
         print 'Message sent: ', message
 
     def send_request(self,likes):
-        LamportSystem.mutex_send_req.acquire()
+        #LamportSystem.mutex_send_req.acquire()
         self.manage_lamport(LamportSystem.lamport_clock)
         LamportSystem.req_number += 1
         req = {'process_id': LamportSystem.process_id, 'clock' : LamportSystem.lamport_clock, 'type' : 'REQ', 'req_number' : LamportSystem.req_number, 'num_likes': likes}
         self.add_to_queue(req)
         self.send_message(json.dumps(req))
-        LamportSystem.mutex_send_req.release()
+        #LamportSystem.mutex_send_req.release()
 
     def send_reply(self, message):
         self.manage_lamport(LamportSystem.lamport_clock)
@@ -72,21 +72,21 @@ class LamportSystem:
         self.send_message(json.dumps(release))
 
     def rcv_request(self,request):
-        LamportSystem.mutex_rcv_req.acquire()
+        #LamportSystem.mutex_rcv_req.acquire()
         self.manage_lamport(request['clock'])
         self.add_to_queue(request)
         self.send_reply(request)
-        LamportSystem.mutex_rcv_req.release()
+        #LamportSystem.mutex_rcv_req.release()
 
     def rcv_release(self,release):
-        LamportSystem.mutex_rcv_rel.acquire()
+        #LamportSystem.mutex_rcv_rel.acquire()
         self.manage_lamport(release['clock'])
         self.process_likes(release['num_likes'])
         LamportSystem.req_queue.pop(0)   #check if process on top
-        LamportSystem.mutex_rcv_rel.release()
+        #LamportSystem.mutex_rcv_rel.release()
 
     def rcv_reply(self,reply):
-        LamportSystem.mutex_rcv_rep.acquire()
+        #LamportSystem.mutex_rcv_rep.acquire()
         self.manage_lamport(reply['clock'])
         if reply['req_number'] not in LamportSystem.reply_dict:
             LamportSystem.reply_dict[reply['req_number']] = []
@@ -95,7 +95,7 @@ class LamportSystem:
             if LamportSystem.req_queue[0]['process_id'] == LamportSystem.process_id:
                 self.process_likes(LamportSystem.req_queue[0]['num_likes'])
                 self.send_release(LamportSystem.req_queue[0]['num_likes'])
-        LamportSystem.mutex_rcv_rep.release()
+        #LamportSystem.mutex_rcv_rep.release()
 
     def process_message_from_server(self, message):
         message_type = message['type']
@@ -150,14 +150,16 @@ while True:
                 try:
                     message = json.loads(message)
                     print 'Message received: ', message
-                    start_new_thread(lamport_object.process_message_from_server, (message,))
+                    #start_new_thread(lamport_object.process_message_from_server, (message,))
+                    lamport_object.process_message_from_server(message)
                 except:
                     print message
 
         else:
             message = sys.stdin.readline()
             time.sleep(5)
-            start_new_thread(lamport_object.send_message_to_server, (message,))
+            #start_new_thread(lamport_object.send_message_to_server, (message,))
+            lamport_object.send_message_to_server(message)
             sys.stdout.flush()
 
 server.close()
