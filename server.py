@@ -2,6 +2,7 @@ import socket
 import sys
 from thread import *
 import json
+import threading
 
 class MessagePassServer:
     list_of_clients = {}
@@ -54,16 +55,18 @@ class MessagePassServer:
         print 'in broadcast'
         print self.list_of_clients
         for client in self.list_of_clients:
-            if self.list_of_clients[client] != connection:
-                try:
-                    #print 'sending to client ' + client + 'message ' + message
-                    print self.list_of_clients
-                    self.list_of_clients[client].send(message)
-                except Exception as ex:
-                    template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-                    message = template.format(type(ex).__name__, ex.args)
-                    print message
+            req_thread = threading.Thread(target=self.spawn_threads_for_broadcast, args=(client,connection,message,) )
+            req_thread.start()
 
+    def spawn_threads_for_broadcast(self,client,connection,message):
+        if self.list_of_clients[client] != connection:
+            try:
+                print self.list_of_clients
+                self.list_of_clients[client].send(message)
+            except Exception as ex:
+                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                message = template.format(type(ex).__name__, ex.args)
+                print message
 
     def initialiseConnection(self):
 

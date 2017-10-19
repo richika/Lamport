@@ -4,6 +4,7 @@ import select
 import sys
 import json
 import re
+from thread import *
 from threading import Thread, Lock
 
 class LamportSystem:
@@ -42,6 +43,7 @@ class LamportSystem:
                     break
         else:
             LamportSystem.req_queue.append(request)
+
         print LamportSystem.req_queue
 
     def send_message(self, message):
@@ -151,14 +153,14 @@ while True:
                 try:
                     message = json.loads(message)
                     print 'Message received: ', message
-                    lamport_object.process_message_from_server(message)
+                    start_new_thread(lamport_object.process_message_from_server, (message,))
                 except:
                     print message
 
         else:
             message = sys.stdin.readline()
             print message
-            lamport_object.send_message_to_server(message)
+            start_new_thread(lamport_object.send_message_to_server, (message,))
             sys.stdout.flush()
 
 server.close()
