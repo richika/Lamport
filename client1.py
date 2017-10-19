@@ -93,9 +93,10 @@ class LamportSystem:
             LamportSystem.reply_dict[reply['req_number']] = []
         LamportSystem.reply_dict[reply['req_number']].append(reply['reply_process_id'])
         if len(LamportSystem.reply_dict[reply['req_number']]) == LamportSystem.num_processes:
-            if LamportSystem.req_queue[0]['process_id'] == LamportSystem.process_id:
-                self.process_likes(LamportSystem.req_queue[0]['num_likes'])
-                self.send_release(LamportSystem.req_queue[0]['num_likes'])
+            while LamportSystem.req_queue[0]['process_id'] != LamportSystem.process_id:
+                continue
+            self.process_likes(LamportSystem.req_queue[0]['num_likes'])
+            self.send_release(LamportSystem.req_queue[0]['num_likes'])
         LamportSystem.mutex_rcv_rep.release()
 
     def process_message_from_server(self, message):
